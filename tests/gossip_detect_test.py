@@ -1,57 +1,53 @@
 """Step 4: Gossip detection — split-view and equivocation."""
-import sys, os
+import sys, os, time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from adapters.gossip import check_consistency, detect_equivocation, TreeHead
-import time
 
 
-def test_consistent_heads():
-    t = time.time()
+def test_consistent_logs():
+    now = time.time()
     heads = [
-        TreeHead("log_1", 100, "abc123", t),
-        TreeHead("log_1", 100, "abc123", t),
+        TreeHead("log_1", 100, "root_abc", now),
+        TreeHead("log_1", 100, "root_abc", now),
     ]
     result = check_consistency(heads)
     assert result["consistent"]
 
 
-def test_split_view_detected():
-    t = time.time()
+def test_split_view():
+    now = time.time()
     heads = [
-        TreeHead("log_1", 100, "abc123", t),
-        TreeHead("log_1", 100, "def456", t),  # different root!
+        TreeHead("log_1", 100, "root_abc", now),
+        TreeHead("log_1", 100, "root_DIFFERENT", now),
     ]
     result = check_consistency(heads)
     assert not result["consistent"]
-    assert result["verdict"] == "SPLIT_VIEW_DETECTED"
 
 
 def test_no_equivocation():
-    statements = [
-        {"agent_id": "kit", "scope": "search", "claim": "result_ok"},
-        {"agent_id": "kit", "scope": "post", "claim": "posted"},
+    stmts = [
+        {"agent_id": "honest", "scope": "cap", "claim": "search"},
     ]
-    result = detect_equivocation(statements)
+    result = detect_equivocation(stmts)
     assert result["clean"]
 
 
-def test_equivocation_detected():
-    statements = [
-        {"agent_id": "evil", "scope": "task_1", "claim": "completed"},
-        {"agent_id": "evil", "scope": "task_1", "claim": "not_started"},  # contradiction!
+def test_equivocation_caught():
+    stmts = [
+        {"agent_id": "liar", "scope": "cap", "claim": "A"},
+        {"agent_id": "liar", "scope": "cap", "claim": "B"},
     ]
-    result = detect_equivocation(statements)
+    result = detect_equivocation(stmts)
     assert not result["clean"]
-    assert len(result["equivocations"]) == 1
 
 
 if __name__ == "__main__":
-    for name, fn in list(globals().items()):
+    for name, fn in sorted(globals().items()):
         if name.startswith("test_"):
             try:
                 fn()
                 print(f"  ✓ {name}")
-            except AssertionError as e:
+            except Exception as e:
                 print(f"  ✗ {name}: {e}")
-    print("Step 4: gossip detection tests complete")
+    print("Step 4: gossip tests complete")

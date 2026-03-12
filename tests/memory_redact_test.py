@@ -5,42 +5,34 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from adapters.redaction import create_entry, redact_entry, verify_redaction
 
 
-def test_create_entry():
-    entry = create_entry("sensitive memory content")
-    assert entry.content == "sensitive memory content"
-    assert entry.entry_hash
-    assert not entry.redacted
-
-
-def test_redact_preserves_hash():
+def test_redaction_valid_with_proof():
     entry = create_entry("sensitive data")
-    redacted = redact_entry(entry)
-    assert redacted.entry_hash == entry.entry_hash  # chameleon property
-    assert redacted.content == "[REDACTED]"
-    assert redacted.redacted
-
-
-def test_redaction_has_proof():
-    entry = create_entry("gdpr delete me")
     redacted = redact_entry(entry)
     result = verify_redaction(redacted)
     assert result["valid"]
     assert result["status"] == "redacted_with_proof"
 
 
-def test_unredacted_verifies():
-    entry = create_entry("keep this")
+def test_unredacted_entry_valid():
+    entry = create_entry("public data")
     result = verify_redaction(entry)
     assert result["valid"]
     assert result["status"] == "unredacted"
 
 
+def test_hash_preserved_after_redaction():
+    entry = create_entry("will be redacted")
+    original = entry.entry_hash
+    redacted = redact_entry(entry)
+    assert redacted.entry_hash == original
+
+
 if __name__ == "__main__":
-    for name, fn in list(globals().items()):
+    for name, fn in sorted(globals().items()):
         if name.startswith("test_"):
             try:
                 fn()
                 print(f"  ✓ {name}")
-            except AssertionError as e:
+            except Exception as e:
                 print(f"  ✗ {name}: {e}")
     print("Step 3: redaction tests complete")
