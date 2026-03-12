@@ -8,7 +8,7 @@ from adapters.redaction import create_entry, redact_entry, verify_redaction
 def test_redaction_preserves_hash():
     entry = create_entry("sensitive memory content")
     redacted = redact_entry(entry)
-    assert redacted.entry_hash == entry.entry_hash, "Hash changed after redaction"
+    assert redacted.entry_hash == entry.entry_hash, "hash changed after redaction"
 
 
 def test_redaction_removes_content():
@@ -19,15 +19,15 @@ def test_redaction_removes_content():
 
 
 def test_redaction_has_proof():
-    entry = create_entry("test")
+    entry = create_entry("data")
     redacted = redact_entry(entry)
     result = verify_redaction(redacted)
     assert result["valid"]
     assert result["status"] == "redacted_with_proof"
 
 
-def test_unredacted_entry_valid():
-    entry = create_entry("keep this")
+def test_unredacted_verifies():
+    entry = create_entry("data")
     result = verify_redaction(entry)
     assert result["valid"]
     assert result["status"] == "unredacted"
