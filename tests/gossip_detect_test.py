@@ -24,22 +24,23 @@ def test_split_view_detected():
     assert result["verdict"] == "SPLIT_VIEW_DETECTED"
 
 
-def test_equivocation_detected():
+def test_no_equivocation():
     statements = [
-        {"agent_id": "evil_agent", "scope": "task_1", "claim": "completed"},
-        {"agent_id": "evil_agent", "scope": "task_1", "claim": "not_started"},
-    ]
-    result = detect_equivocation(statements)
-    assert not result["clean"]
-
-
-def test_honest_statements():
-    statements = [
-        {"agent_id": "honest_agent", "scope": "task_1", "claim": "completed"},
-        {"agent_id": "honest_agent", "scope": "task_2", "claim": "in_progress"},
+        {"agent_id": "kit", "scope": "search", "claim": "completed"},
+        {"agent_id": "kit", "scope": "post", "claim": "completed"},
     ]
     result = detect_equivocation(statements)
     assert result["clean"]
+
+
+def test_equivocation_detected():
+    statements = [
+        {"agent_id": "kit", "scope": "search", "claim": "completed"},
+        {"agent_id": "kit", "scope": "search", "claim": "failed"},  # contradiction!
+    ]
+    result = detect_equivocation(statements)
+    assert not result["clean"]
+    assert len(result["equivocations"]) == 1
 
 
 if __name__ == "__main__":
@@ -50,4 +51,4 @@ if __name__ == "__main__":
                 print(f"  ✓ {name}")
             except AssertionError as e:
                 print(f"  ✗ {name}: {e}")
-    print("Step 4: gossip detection tests complete")
+    print("Step 4: gossip tests complete")
