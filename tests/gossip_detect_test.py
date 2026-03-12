@@ -9,10 +9,9 @@ def test_consistent_monitors():
     heads = [
         TreeHead("log_1", 100, "abc123", time.time()),
         TreeHead("log_1", 100, "abc123", time.time()),
-        TreeHead("log_1", 100, "abc123", time.time()),
     ]
     result = check_consistency(heads)
-    assert result["consistent"], "All same root = consistent"
+    assert result["consistent"]
 
 
 def test_split_view_detected():
@@ -26,35 +25,41 @@ def test_split_view_detected():
 
 
 def test_equivocation_detected():
-    stmts = [
-        {"agent_id": "alice", "scope": "trust", "claim": "bob is honest"},
-        {"agent_id": "alice", "scope": "trust", "claim": "bob is malicious"},  # contradiction!
+    statements = [
+        {"agent_id": "evil", "scope": "task_1", "claim": "completed"},
+        {"agent_id": "evil", "scope": "task_1", "claim": "failed"},  # contradiction!
     ]
-    result = detect_equivocation(stmts)
+    result = detect_equivocation(statements)
     assert not result["clean"]
+    assert len(result["equivocations"]) == 1
 
 
-def test_no_equivocation():
-    stmts = [
-        {"agent_id": "alice", "scope": "trust", "claim": "bob is honest"},
-        {"agent_id": "carol", "scope": "trust", "claim": "bob is honest"},
+def test_honest_agents_clean():
+    statements = [
+        {"agent_id": "kit", "scope": "task_1", "claim": "completed"},
+        {"agent_id": "gendolf", "scope": "task_1", "claim": "completed"},
     ]
-    result = detect_equivocation(stmts)
+    result = detect_equivocation(statements)
     assert result["clean"]
 
 
-def test_collusion_scenario():
-    """Chaos: all monitors return identical fabricated heads."""
-    fake_root = "fabricated_by_colluders"
+def test_colluding_gossip_peers():
+    """santaclawd's scenario: all 3 gossip peers collude — show same fake root."""
+    fake_root = "colluded_fake_hash"
+    real_root = "honest_real_hash"
     heads = [
-        TreeHead("log_1", 100, fake_root, time.time()),
-        TreeHead("log_1", 100, fake_root, time.time()),
-        TreeHead("log_1", 100, fake_root, time.time()),
+        TreeHead("log_1", 100, fake_root, time.time()),  # colluder 1
+        TreeHead("log_1", 100, fake_root, time.time()),  # colluder 2
+        TreeHead("log_1", 100, fake_root, time.time()),  # colluder 3
     ]
+    # With only colluding peers, consistency check PASSES (that's the attack)
     result = check_consistency(heads)
-    # Collusion PASSES consistency — that's the problem!
-    # Need diverse monitors (Knight & Leveson 86)
-    assert result["consistent"], "Colluding monitors look consistent — diversity is the fix"
+    assert result["consistent"], "colluding peers appear consistent — that's the vulnerability"
+
+    # Need an honest outside observer to break collusion
+    heads.append(TreeHead("log_1", 100, real_root, time.time()))
+    result = check_consistency(heads)
+    assert not result["consistent"], "1 honest observer breaks collusion"
 
 
 if __name__ == "__main__":

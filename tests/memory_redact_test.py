@@ -1,34 +1,34 @@
-"""Step 3: Memory redaction — chameleon hash preserves chain."""
+"""Step 3: Memory redaction — chameleon hash preserves chain integrity."""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from adapters.redaction import create_entry, redact_entry, verify_redaction
 
 
-def test_redact_preserves_hash():
-    entry = create_entry("sensitive memory content")
+def test_redaction_preserves_hash():
+    entry = create_entry("secret memory content")
     original_hash = entry.entry_hash
     redacted = redact_entry(entry)
-    assert redacted.entry_hash == original_hash, "Chameleon property: hash unchanged after redaction"
+    assert redacted.entry_hash == original_hash, "hash must survive redaction"
 
 
-def test_redacted_content_removed():
-    entry = create_entry("secret stuff")
+def test_redaction_removes_content():
+    entry = create_entry("secret memory content")
     redacted = redact_entry(entry)
     assert redacted.content == "[REDACTED]"
     assert "secret" not in redacted.content
 
 
 def test_redaction_has_proof():
-    entry = create_entry("data to forget")
+    entry = create_entry("content")
     redacted = redact_entry(entry)
     result = verify_redaction(redacted)
     assert result["valid"]
     assert result["status"] == "redacted_with_proof"
 
 
-def test_unredacted_passes():
-    entry = create_entry("keep this")
+def test_unredacted_verifies():
+    entry = create_entry("normal content")
     result = verify_redaction(entry)
     assert result["valid"]
     assert result["status"] == "unredacted"
