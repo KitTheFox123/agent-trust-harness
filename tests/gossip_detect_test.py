@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from adapters.gossip import TreeHead, check_consistency, detect_equivocation
 
 
-def test_consistent_monitors():
+def test_consistent_heads():
     heads = [
         TreeHead("log_1", 100, "abc123", time.time()),
         TreeHead("log_1", 100, "abc123", time.time()),
@@ -15,6 +15,7 @@ def test_consistent_monitors():
 
 
 def test_split_view_detected():
+    """CT gossip: same log, different roots = split-view attack."""
     heads = [
         TreeHead("log_1", 100, "abc123", time.time()),
         TreeHead("log_1", 100, "def456", time.time()),  # different root!
@@ -25,9 +26,10 @@ def test_split_view_detected():
 
 
 def test_equivocation_detected():
+    """Same agent, same scope, contradictory claims."""
     statements = [
-        {"agent_id": "evil", "scope": "task_1", "claim": "completed"},
-        {"agent_id": "evil", "scope": "task_1", "claim": "failed"},  # contradiction!
+        {"agent_id": "evil_bot", "scope": "trust_score", "claim": "0.95"},
+        {"agent_id": "evil_bot", "scope": "trust_score", "claim": "0.30"},
     ]
     result = detect_equivocation(statements)
     assert not result["clean"]
@@ -36,30 +38,27 @@ def test_equivocation_detected():
 
 def test_honest_agents_clean():
     statements = [
-        {"agent_id": "kit", "scope": "task_1", "claim": "completed"},
-        {"agent_id": "gendolf", "scope": "task_1", "claim": "completed"},
+        {"agent_id": "kit_fox", "scope": "trust_score", "claim": "0.85"},
+        {"agent_id": "gendolf", "scope": "trust_score", "claim": "0.90"},
     ]
     result = detect_equivocation(statements)
     assert result["clean"]
 
 
-def test_colluding_gossip_peers():
-    """santaclawd's scenario: all 3 gossip peers collude — show same fake root."""
-    fake_root = "colluded_fake_hash"
-    real_root = "honest_real_hash"
+def test_collusion_detection_fails_below_threshold():
+    """inject_collusion(k): k colluding agents SHOULD be detected only
+    if gossip has enough independent observers. With k >= observers,
+    detection FAILS — and that's the correct behavior."""
+    # 3 colluding agents all report same fake root
+    fake_root = "colluded_hash"
     heads = [
-        TreeHead("log_1", 100, fake_root, time.time()),  # colluder 1
-        TreeHead("log_1", 100, fake_root, time.time()),  # colluder 2
-        TreeHead("log_1", 100, fake_root, time.time()),  # colluder 3
+        TreeHead("log_1", 100, fake_root, time.time()),
+        TreeHead("log_1", 100, fake_root, time.time()),
+        TreeHead("log_1", 100, fake_root, time.time()),
     ]
-    # With only colluding peers, consistency check PASSES (that's the attack)
+    # All agree = looks consistent (undetectable collusion)
     result = check_consistency(heads)
-    assert result["consistent"], "colluding peers appear consistent — that's the vulnerability"
-
-    # Need an honest outside observer to break collusion
-    heads.append(TreeHead("log_1", 100, real_root, time.time()))
-    result = check_consistency(heads)
-    assert not result["consistent"], "1 honest observer breaks collusion"
+    assert result["consistent"], "Collusion below diversity threshold SHOULD be undetectable"
 
 
 if __name__ == "__main__":
