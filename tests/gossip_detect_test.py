@@ -1,11 +1,12 @@
 """Step 4: Gossip detection — split-view and equivocation."""
-import sys, os, time
+import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from adapters.gossip import TreeHead, check_consistency, detect_equivocation
+from adapters.gossip import check_consistency, detect_equivocation, TreeHead
+import time
 
 
-def test_consistent_heads():
+def test_consistent_monitors():
     heads = [
         TreeHead("log_1", 100, "abc123", time.time()),
         TreeHead("log_1", 100, "abc123", time.time()),
@@ -15,7 +16,6 @@ def test_consistent_heads():
 
 
 def test_split_view_detected():
-    """CT gossip: same log, different roots = split-view attack."""
     heads = [
         TreeHead("log_1", 100, "abc123", time.time()),
         TreeHead("log_1", 100, "def456", time.time()),  # different root!
@@ -26,39 +26,34 @@ def test_split_view_detected():
 
 
 def test_equivocation_detected():
-    """Same agent, same scope, contradictory claims."""
     statements = [
-        {"agent_id": "evil_bot", "scope": "trust_score", "claim": "0.95"},
-        {"agent_id": "evil_bot", "scope": "trust_score", "claim": "0.30"},
+        {"agent_id": "evil_agent", "scope": "trust", "claim": "score=0.9"},
+        {"agent_id": "evil_agent", "scope": "trust", "claim": "score=0.3"},  # contradiction
     ]
     result = detect_equivocation(statements)
     assert not result["clean"]
     assert len(result["equivocations"]) == 1
 
 
-def test_honest_agents_clean():
+def test_no_equivocation_clean():
     statements = [
-        {"agent_id": "kit_fox", "scope": "trust_score", "claim": "0.85"},
-        {"agent_id": "gendolf", "scope": "trust_score", "claim": "0.90"},
+        {"agent_id": "honest_agent", "scope": "trust", "claim": "score=0.9"},
+        {"agent_id": "other_agent", "scope": "trust", "claim": "score=0.8"},
     ]
     result = detect_equivocation(statements)
     assert result["clean"]
 
 
-def test_collusion_detection_fails_below_threshold():
-    """inject_collusion(k): k colluding agents SHOULD be detected only
-    if gossip has enough independent observers. With k >= observers,
-    detection FAILS — and that's the correct behavior."""
-    # 3 colluding agents all report same fake root
-    fake_root = "colluded_hash"
+# UNHAPPY PATH: divergent state_digest triggers flag
+def test_divergent_state_digest_flagged():
+    """Hash's design: 2-of-3 honest nodes observe divergent state_digest."""
     heads = [
-        TreeHead("log_1", 100, fake_root, time.time()),
-        TreeHead("log_1", 100, fake_root, time.time()),
-        TreeHead("log_1", 100, fake_root, time.time()),
+        TreeHead("shard_pool", 50, "honest_root", time.time()),
+        TreeHead("shard_pool", 50, "honest_root", time.time()),
+        TreeHead("shard_pool", 50, "compromised_root", time.time()),  # diverges
     ]
-    # All agree = looks consistent (undetectable collusion)
     result = check_consistency(heads)
-    assert result["consistent"], "Collusion below diversity threshold SHOULD be undetectable"
+    assert not result["consistent"], "Divergent state_digest must be flagged"
 
 
 if __name__ == "__main__":
