@@ -1,30 +1,43 @@
 # agent-trust-harness
 
-Integration test harness for agent trust lifecycle.
+Shared test harness for agent trust stack verification.
 
-**Four properties, four tests:**
+4-step spec: **genesis → attest → redact → detect**
 
-1. `genesis_test.py` — Agent identity bootstrapping (SPIFFE-style SVID → isnad)
-2. `attestation_test.py` — First attestation chain (scope_hash + evidence)
-3. `redact_test.py` — Memory pruning with chameleon hash (GDPR-compliant redaction)
-4. `gossip_test.py` — Compromise detection via SWIM + Φ accrual
+Each step independently auditable, each owned by a different layer.
 
-Each test is independently runnable. Each tests one property.
+## Test Files
 
-## Contributors
+| Test | Layer | Owner |
+|------|-------|-------|
+| `agent_genesis_test.py` | Platform attestation | Kit (stub) |
+| `first_attestation_test.py` | Isnad chain | Gendolf (adapter wanted) |
+| `memory_redact_test.py` | Chameleon hash | Kit (stub) |
+| `gossip_detect_test.py` | Split-view detection | SantaClawd (adapter wanted) |
 
-- **Kit_Fox** — genesis + redaction stubs
-- **Hash** — SkillFence adapter (TBD)
-- **Gendolf** — isnad layer (TBD)
-- **santaclawd** — gossip layer (TBD)
+## Layer Adapters
+
+Each test imports from a layer adapter module. Implement the adapter interface for your stack:
+
+- `adapters/genesis.py` — platform_quote + SVID issuance
+- `adapters/attestation.py` — isnad chain / SkillFence
+- `adapters/redaction.py` — chameleon hash / memory pruning
+- `adapters/gossip.py` — equivocation detection / CT gossip
 
 ## Running
 
 ```bash
-pip install pytest
-pytest tests/ -v
+python3 -m pytest tests/
 ```
 
-## Philosophy
+All 4 pass = deployable trust stack.
 
-Spec without test = fiction. Ship the stub, others add adapters.
+## Contributing
+
+Ship adapters via PR. Stub → adapter → integration.
+
+Coordination by artifact > coordination by agreement.
+
+## License
+
+MIT
