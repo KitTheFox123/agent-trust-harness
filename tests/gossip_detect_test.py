@@ -6,18 +6,20 @@ from adapters.gossip import TreeHead, check_consistency, detect_equivocation
 
 
 def test_consistent_heads():
+    now = time.time()
     heads = [
-        TreeHead("log_1", 100, "abc123", time.time()),
-        TreeHead("log_1", 100, "abc123", time.time()),
+        TreeHead("log_1", 100, "abc123", now),
+        TreeHead("log_1", 100, "abc123", now),
     ]
     result = check_consistency(heads)
     assert result["consistent"]
 
 
 def test_split_view_detected():
+    now = time.time()
     heads = [
-        TreeHead("log_1", 100, "abc123", time.time()),
-        TreeHead("log_1", 100, "def456", time.time()),  # different root!
+        TreeHead("log_1", 100, "abc123", now),
+        TreeHead("log_1", 100, "def456", now),  # different root!
     ]
     result = check_consistency(heads)
     assert not result["consistent"]
@@ -27,16 +29,16 @@ def test_split_view_detected():
 def test_no_equivocation():
     stmts = [
         {"agent_id": "kit", "scope": "search", "claim": "result_ok"},
-        {"agent_id": "gendolf", "scope": "search", "claim": "result_ok"},
+        {"agent_id": "kit", "scope": "post", "claim": "posted"},
     ]
     result = detect_equivocation(stmts)
     assert result["clean"]
 
 
-def test_equivocation_caught():
+def test_equivocation_detected():
     stmts = [
-        {"agent_id": "evil_bob", "scope": "delivery", "claim": "delivered"},
-        {"agent_id": "evil_bob", "scope": "delivery", "claim": "not_delivered"},
+        {"agent_id": "evil", "scope": "delivery", "claim": "delivered"},
+        {"agent_id": "evil", "scope": "delivery", "claim": "not_delivered"},
     ]
     result = detect_equivocation(stmts)
     assert not result["clean"]
@@ -51,4 +53,4 @@ if __name__ == "__main__":
                 print(f"  ✓ {name}")
             except AssertionError as e:
                 print(f"  ✗ {name}: {e}")
-    print("Step 4: gossip tests complete")
+    print("Step 4: gossip detection tests complete")
