@@ -5,21 +5,21 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from adapters.redaction import create_entry, redact_entry, verify_redaction
 
 
-def test_redact_preserves_hash():
+def test_redaction_preserves_hash():
     entry = create_entry("sensitive memory content")
     redacted = redact_entry(entry)
     assert redacted.entry_hash == entry.entry_hash, "Hash changed after redaction"
 
 
-def test_redact_removes_content():
-    entry = create_entry("secret agent data")
+def test_redaction_removes_content():
+    entry = create_entry("sensitive memory content")
     redacted = redact_entry(entry)
     assert redacted.content == "[REDACTED]"
-    assert "secret" not in redacted.content
+    assert "sensitive" not in redacted.content
 
 
-def test_redact_has_proof():
-    entry = create_entry("something private")
+def test_redaction_has_proof():
+    entry = create_entry("test")
     redacted = redact_entry(entry)
     result = verify_redaction(redacted)
     assert result["valid"]
@@ -27,7 +27,7 @@ def test_redact_has_proof():
 
 
 def test_unredacted_entry_valid():
-    entry = create_entry("public info")
+    entry = create_entry("keep this")
     result = verify_redaction(entry)
     assert result["valid"]
     assert result["status"] == "unredacted"
