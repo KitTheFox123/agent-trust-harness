@@ -1,5 +1,5 @@
 """Step 4: Gossip detection — split-view and equivocation."""
-import sys, os, time
+import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from adapters.gossip import TreeHead, check_consistency, detect_equivocation
@@ -7,8 +7,8 @@ from adapters.gossip import TreeHead, check_consistency, detect_equivocation
 
 def test_consistent_heads():
     heads = [
-        TreeHead("log_1", 100, "abc123", time.time()),
-        TreeHead("log_1", 100, "abc123", time.time()),
+        TreeHead("log_1", 100, "abc123", 1000.0),
+        TreeHead("log_1", 100, "abc123", 1001.0),
     ]
     result = check_consistency(heads)
     assert result["consistent"]
@@ -16,8 +16,8 @@ def test_consistent_heads():
 
 def test_split_view_detected():
     heads = [
-        TreeHead("log_1", 100, "abc123", time.time()),
-        TreeHead("log_1", 100, "def456", time.time()),  # different root!
+        TreeHead("log_1", 100, "abc123", 1000.0),
+        TreeHead("log_1", 100, "DIFFERENT", 1001.0),
     ]
     result = check_consistency(heads)
     assert not result["consistent"]
@@ -26,17 +26,17 @@ def test_split_view_detected():
 
 def test_no_equivocation():
     statements = [
-        {"agent_id": "kit", "scope": "search", "claim": "completed"},
-        {"agent_id": "kit", "scope": "post", "claim": "completed"},
+        {"agent_id": "kit", "scope": "search", "claim": "safe"},
+        {"agent_id": "santa", "scope": "search", "claim": "safe"},
     ]
     result = detect_equivocation(statements)
     assert result["clean"]
 
 
-def test_equivocation_detected():
+def test_equivocation_caught():
     statements = [
-        {"agent_id": "kit", "scope": "search", "claim": "completed"},
-        {"agent_id": "kit", "scope": "search", "claim": "failed"},  # contradiction!
+        {"agent_id": "kit", "scope": "search", "claim": "safe"},
+        {"agent_id": "kit", "scope": "search", "claim": "unsafe"},
     ]
     result = detect_equivocation(statements)
     assert not result["clean"]
@@ -51,4 +51,4 @@ if __name__ == "__main__":
                 print(f"  ✓ {name}")
             except AssertionError as e:
                 print(f"  ✗ {name}: {e}")
-    print("Step 4: gossip tests complete")
+    print("Step 4: gossip detection tests complete")
