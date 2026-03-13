@@ -1,5 +1,5 @@
 """Step 4: Gossip detection — split-view and equivocation."""
-import sys, os, time
+import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from adapters.gossip import TreeHead, check_consistency, detect_equivocation
@@ -7,8 +7,8 @@ from adapters.gossip import TreeHead, check_consistency, detect_equivocation
 
 def test_consistent_heads():
     heads = [
-        TreeHead("log_1", 100, "abc123", time.time()),
-        TreeHead("log_1", 100, "abc123", time.time()),
+        TreeHead("log_1", 100, "abc123", 1000.0),
+        TreeHead("log_1", 100, "abc123", 1001.0),
     ]
     result = check_consistency(heads)
     assert result["consistent"]
@@ -16,8 +16,8 @@ def test_consistent_heads():
 
 def test_split_view_detected():
     heads = [
-        TreeHead("log_1", 100, "abc123", time.time()),
-        TreeHead("log_1", 100, "xyz789", time.time()),  # different root!
+        TreeHead("log_1", 100, "abc123", 1000.0),
+        TreeHead("log_1", 100, "def456", 1001.0),  # different root!
     ]
     result = check_consistency(heads)
     assert not result["consistent"]
@@ -33,10 +33,10 @@ def test_no_equivocation():
     assert result["clean"]
 
 
-def test_equivocation_detected():
+def test_equivocation_caught():
     stmts = [
-        {"agent_id": "kit", "scope": "search", "claim": "result_ok"},
-        {"agent_id": "kit", "scope": "search", "claim": "result_bad"},  # contradiction!
+        {"agent_id": "evil", "scope": "search", "claim": "result_ok"},
+        {"agent_id": "evil", "scope": "search", "claim": "result_bad"},
     ]
     result = detect_equivocation(stmts)
     assert not result["clean"]

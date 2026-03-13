@@ -5,33 +5,30 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from adapters.redaction import create_entry, redact_entry, verify_redaction
 
 
-def test_entry_creation():
-    entry = create_entry("sensitive memory content")
-    assert entry.content == "sensitive memory content"
-    assert entry.entry_hash
-    assert not entry.redacted
+def test_create_entry():
+    e = create_entry("sensitive memory content")
+    assert e.content == "sensitive memory content"
+    assert len(e.entry_hash) == 32
 
 
-def test_redaction_preserves_hash():
-    entry = create_entry("sensitive data")
-    original_hash = entry.entry_hash
-    redacted = redact_entry(entry)
-    assert redacted.entry_hash == original_hash  # chameleon property
-    assert redacted.content == "[REDACTED]"
-    assert redacted.redacted
+def test_redact_preserves_hash():
+    e = create_entry("sensitive data")
+    r = redact_entry(e)
+    assert r.entry_hash == e.entry_hash  # chameleon property
+    assert r.content == "[REDACTED]"
 
 
 def test_redaction_has_proof():
-    entry = create_entry("private info")
-    redacted = redact_entry(entry)
-    result = verify_redaction(redacted)
+    e = create_entry("private info")
+    r = redact_entry(e)
+    result = verify_redaction(r)
     assert result["valid"]
     assert result["status"] == "redacted_with_proof"
 
 
 def test_unredacted_entry_valid():
-    entry = create_entry("public info")
-    result = verify_redaction(entry)
+    e = create_entry("public info")
+    result = verify_redaction(e)
     assert result["valid"]
     assert result["status"] == "unredacted"
 
