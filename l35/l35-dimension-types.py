@@ -52,21 +52,21 @@ class Phase:
     state: str  # "never" | "locked" | "unlocked" | "slashed"
     stability_hours: float  # S for post-unlock decay
     hours_in_state: float = 0.0
+    prior_state: str = ""  # recorded on SLASHED transition — severity signal
 
     VALID_TRANSITIONS = {
-        "never": {"locked"},
+        "never": {"pending"},
+        "pending": {"locked", "never"},  # tx confirms or fails/times out
         "locked": {"unlocked", "slashed"},
-        "unlocked": {"locked"},  # can re-commit
+        "unlocked": {"pending"},  # re-commit goes through pending again
         "slashed": set(),  # terminal — no recovery
     }
 
     def score(self, raw: float, age_hours: float) -> float:
-        if self.state == "never":
-            return 0.0
+        if self.state in ("never", "pending", "slashed"):
+            return 0.0  # No commitment yet / destroyed
         if self.state == "locked":
             return raw
-        if self.state == "slashed":
-            return 0.0  # Terminal: commitment destroyed
         # unlocked: C_residual decays
         return raw * math.exp(-self.hours_in_state / self.stability_hours)
 
@@ -77,7 +77,7 @@ class Phase:
         labels = {
             "never": "Phase(NEVER)",
             "locked": f"Phase(LOCKED)",
-            "slashed": "Phase(SLASHED, terminal)",
+            "slashed": f"Phase(SLASHED from {self.prior_state or '?'}, terminal)",
         }
         if self.state in labels:
             return labels[self.state]
@@ -208,8 +208,15 @@ def demo():
 
     # Add SLASHED scenario manually (not in l35_standard helper)
     slashed_dims = l35_standard(tile=0.95, gossip=0.9, attestation=0.88, sleeper=0.91)
-    slashed_dims.append(Dimension("C", "commitment", Phase(state="slashed", stability_hours=720.0), 1.0, 0, "on_chain"))
-    scenarios_extra = [("SLASHED (terminal, no recovery)", slashed_dims)]
+    slashed_dims.append(Dimension("C", "commitment", Phase(state="slashed", stability_hours=720.0, prior_state="locked"), 1.0, 0, "on_chain"))
+
+    slashed_from_unlocked = l35_standard(tile=0.95, gossip=0.9, attestation=0.88, sleeper=0.91)
+    slashed_from_unlocked.append(Dimension("C", "commitment", Phase(state="slashed", stability_hours=720.0, prior_state="unlocked"), 1.0, 0, "on_chain"))
+
+    scenarios_extra = [
+        ("SLASHED from LOCKED (active breach)", slashed_dims),
+        ("SLASHED from UNLOCKED (post-withdrawal)", slashed_from_unlocked),
+    ]
 
     for name, kwargs in scenarios:
         dims = l35_standard(**kwargs)
